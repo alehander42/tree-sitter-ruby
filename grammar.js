@@ -70,7 +70,7 @@ module.exports = grammar({
   word: $ => $.identifier,
 
   rules: {
-    program: $ => seq(
+    program_begin: $ => seq(
       optional($._statements),
       optional(seq(
         '__END__',
@@ -108,7 +108,7 @@ module.exports = grammar({
       $._arg
     ),
 
-    method: $ => seq('def', $._method_rest),
+    def: $ => seq('def', $._method_rest),
 
     singleton_method: $ => seq(
       'def',
@@ -121,11 +121,11 @@ module.exports = grammar({
 
     _method_rest: $ => seq(
       $._method_name,
-      choice($.method_parameters, $._terminator),
+      choice($.args, $._terminator),
       $._body_statement
     ),
 
-    method_parameters: $ => prec.right(choice(
+    args: $ => prec.right(choice(
       seq('(', commaSep($._formal_parameter), ')', optional($._terminator)),
       seq($._simple_formal_parameter, $._terminator),
       seq($._simple_formal_parameter, ',', commaSep1($._formal_parameter), $._terminator)
@@ -163,7 +163,7 @@ module.exports = grammar({
 
     class: $ => seq(
       'class',
-      choice($.constant, $.scope_resolution),
+      choice($.const, $.scope_resolution),
       optional($.superclass),
       $._terminator,
       $._body_statement
@@ -181,17 +181,17 @@ module.exports = grammar({
 
     module: $ => seq(
       'module',
-      choice($.constant, $.scope_resolution),
+      choice($.const, $.scope_resolution),
       choice(
         seq($._terminator, $._body_statement),
         'end'
       )
     ),
 
-    return: $ => prec.left(seq('return', optional($.argument_list))),
-    yield: $ => prec.left(seq('yield', optional($.argument_list))),
-    break: $ => prec.left(seq('break', optional($.argument_list))),
-    next: $ => prec.left(seq('next', optional($.argument_list))),
+    return: $ => prec.left(seq('return', optional($._argument_list))),
+    yield: $ => prec.left(seq('yield', optional($._argument_list))),
+    break: $ => prec.left(seq('break', optional($._argument_list))),
+    next: $ => prec.left(seq('next', optional($._argument_list))),
     redo: $ => 'redo',
     retry: $ => 'retry',
 
@@ -292,6 +292,7 @@ module.exports = grammar({
 
     _arg: $ => choice(
       $._primary,
+      $.casgn,
       $.assignment,
       $.operator_assignment,
       $.conditional,
@@ -309,7 +310,7 @@ module.exports = grammar({
       $.hash,
       $.subshell,
       $.symbol,
-      $.integer,
+      $.int,
       $.float,
       $.complex,
       $.rational,
@@ -318,7 +319,7 @@ module.exports = grammar({
       $.chained_string,
       $.regex,
       $.lambda,
-      $.method,
+      $.def,
       $.singleton_method,
       $.class,
       $.singleton_class,
@@ -353,35 +354,47 @@ module.exports = grammar({
         '::',
         seq($._primary, token.immediate('::'))
       ),
-      choice($.identifier, $.constant)
+      choice($.identifier, $.const)
     )),
 
-    call: $ => prec.left(PREC.BITWISE_AND + 1, seq(
-      $._primary,
-      choice('.', '&.'),
-      repeat($.heredoc_body),
-      choice($.identifier, $.operator, $.constant, $.argument_list_with_parens)
-    )),
-
-    method_call: $ => {
-      const receiver = choice($._variable, $.scope_resolution, $.call)
-
+    
+  
+    send: $ => {
+      const receiver = choice($._variable, $.scope_resolution);
+      
       return choice(
-        seq(receiver, $.argument_list),
-        seq(receiver, prec(PREC.CURLY_BLOCK, seq($.argument_list, $.block))),
-        seq(receiver, prec(PREC.DO_BLOCK, seq($.argument_list, $.do_block))),
-        prec(PREC.CURLY_BLOCK, seq(receiver, $.block)),
-        prec(PREC.DO_BLOCK, seq(receiver, $.do_block))
+        seq(receiver, $._argument_list),
+        seq(receiver, prec(PREC.DO_BLOCK, seq($._argument_list, $.do_block))),
       )
     },
 
-    argument_list: $ => prec.right(seq(
+    // call: $ => prec.left(PREC.BITWISE_AND + 1, seq(
+    //   $._primary,
+    //   choice('.', '&.'),
+    //   repeat($.heredoc_body),
+    //   choice($.identifier, $.operator, $.const, $.argument_list_with_parens)
+    // )),
+
+    // method_call: $ => {
+    //   const receiver = choice($._variable, $.scope_resolution, $.call)
+
+    //   return choice(
+    //     seq(receiver, $.argument_list),
+    //     seq(receiver, prec(PREC.CURLY_BLOCK, seq($.argument_list, $.block))),
+    //     seq(receiver, prec(PREC.DO_BLOCK, seq($.argument_list, $.do_block))),
+    //     prec(PREC.CURLY_BLOCK, seq(receiver, $.block)),
+    //     prec(PREC.DO_BLOCK, seq(receiver, $.do_block))
+    //   )
+    // },
+
+    _argument_list: $ => prec.right(seq(
       choice(
         $._argument_list_with_parens,
         sep1($._argument, seq(',', optional($.heredoc_body)))
       ),
       repeat($.heredoc_body)
     )),
+
 
     argument_list_with_parens: $ => $._argument_list_with_parens,
 
@@ -424,6 +437,8 @@ module.exports = grammar({
       '}'
     )),
 
+    casgn: $ => prec(2, seq($.const, '=', $.int)),
+    
     assignment: $ => choice(
       prec(1, seq($._lhs, '=', $._arg_or_splat_arg)),
       seq($._lhs, '=', $.right_assignment_list),
@@ -479,7 +494,7 @@ module.exports = grammar({
       optional(',')
     )),
     destructured_left_assignment: $ => prec(-1, seq('(', $._mlhs, ')')),
-
+    
     rest_assignment: $ => prec(-1, seq('*', optional($._lhs))),
 
     _lhs: $ => prec.left(choice(
@@ -489,9 +504,12 @@ module.exports = grammar({
       $.nil,
       $.scope_resolution,
       $.element_reference,
-      $.call,
-      $.method_call
+      $.send,
+      // $.call,
+      // $.method_call
     )),
+
+    _lhsconst: $ => prec(-2, $.const),
 
     _variable: $ => prec.right(choice(
       $.self,
@@ -500,12 +518,14 @@ module.exports = grammar({
       $.class_variable,
       $.global_variable,
       $.identifier,
-      $.constant
+      $.const
     )),
 
-    constant: $ => token(seq(/[A-Z]/, IDENTIFIER_CHARS, /(\?|\!)?/)),
+    const: $ => token(seq(/[A-Z]/, IDENTIFIER_CHARS, /(\?|\!)?/)),
 
     identifier: $ => token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS, /(\?|\!)?/)),
+
+    // arg: $ => token(seq(LOWER_ALPHA_CHAR, IDENTIFIER_CHARS, /(\?|\!)?/)),
 
     instance_variable: $ => token(seq('@', ALPHA_CHAR, IDENTIFIER_CHARS)),
 
@@ -520,7 +540,7 @@ module.exports = grammar({
 
     _method_name: $ => choice(
       $.identifier,
-      $.constant,
+      $.const,
       $.setter,
       $.symbol,
       $.operator,
@@ -547,11 +567,11 @@ module.exports = grammar({
       )
     ))),
 
-    integer: $ => /0[bB][01](_?[01])*|0[oO]?[0-7](_?[0-7])*|(0[dD])?\d(_?\d)*|0x[0-9a-fA-F](_?[0-9a-fA-F])*/,
+    int: $ => /0[bB][01](_?[01])*|0[oO]?[0-7](_?[0-7])*|(0[dD])?\d(_?\d)*|0x[0-9a-fA-F](_?[0-9a-fA-F])*/,
 
     float: $ => /\d(_?\d)*(\.\d)?(_?\d)*([eE][\+-]?\d(_?\d)*)?/,
     complex: $ => /(\d+)?(\+|-)?(\d+)i/,
-    rational: $ => seq($.integer, 'r'),
+    rational: $ => seq($.int, 'r'),
     super: $ => 'super',
     true: $ => choice('true', 'TRUE'),
     false: $ => choice('false', 'FALSE'),
@@ -658,7 +678,7 @@ module.exports = grammar({
         choice(
           alias($._identifier_hash_key, $.symbol),
           alias($.identifier, $.symbol),
-          alias($.constant, $.symbol),
+          alias($.const, $.symbol),
           $.string
         ),
         token.immediate(':'),
