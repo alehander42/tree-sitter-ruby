@@ -372,6 +372,10 @@ module.exports = grammar({
           choice('.', '&.'),
           choice($.identifier, $.operator, $.const),
           $._argument_list),
+        prec.right(PREC.RELATIONAL, 
+          seq($._arg, 
+            $.operator2,
+            $._arg)),
        receiver
         ))
 
@@ -472,7 +476,7 @@ module.exports = grammar({
       prec.left(PREC.BOOLEAN_OR, seq($._arg, '||', $._arg)),
       prec.left(PREC.BOOLEAN_OR, seq($._arg, '&&', $._arg)),
       prec.left(PREC.SHIFT, seq($._arg, choice('<<', '>>'), $._arg)),
-      prec.right(PREC.RELATIONAL, seq($._arg, choice('==', '!=', '===', '<=>', '=~', '!~'), $._arg)),
+      prec.right(PREC.RELATIONAL, seq($._arg, choice('==', '!=', '<=>', '=~', '!~'), $._arg)),
       prec.left(PREC.COMPARISON, seq($._arg, choice('<', '<=', '>', '>='), $._arg)),
       prec.left(PREC.BITWISE_AND, seq($._arg, '&', $._arg)),
       prec.left(PREC.BITWISE_OR, seq($._arg, choice('^', '|'), $._arg)),
@@ -569,6 +573,10 @@ module.exports = grammar({
     operator: $ => choice(
       '..', '|', '^', '&', '<=>', '==', '===', '=~', '>', '>=', '<', '<=', '+',
       '-', '*', '/', '%', '!', '!~', '**', '<<', '>>', '~', '+@', '-@', '[]', '[]=', '`'
+    ),
+
+    operator2: $ => choice(
+      '==='
     ),
 
     _method_name: $ => choice(

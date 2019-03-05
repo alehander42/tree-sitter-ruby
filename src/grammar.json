@@ -2190,6 +2190,27 @@
             ]
           },
           {
+            "type": "PREC_RIGHT",
+            "value": 40,
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_arg"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "operator2"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_arg"
+                }
+              ]
+            }
+          },
+          {
             "type": "CHOICE",
             "members": [
               {
@@ -2883,10 +2904,6 @@
                   {
                     "type": "STRING",
                     "value": "!="
-                  },
-                  {
-                    "type": "STRING",
-                    "value": "==="
                   },
                   {
                     "type": "STRING",
@@ -3712,6 +3729,15 @@
         {
           "type": "STRING",
           "value": "`"
+        }
+      ]
+    },
+    "operator2": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "==="
         }
       ]
     },
